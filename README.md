@@ -128,3 +128,4 @@ A reflective loader may be added in the future.
 - .net loading with CLR : https://github.com/med0x2e/ExecuteAssembly
 - Verry interresting repos for pe-loader : https://github.com/Octoberfest7/Inline-Execute-PE
 - Proxy Function call : https://github.com/paranoidninja/Proxy-Function-Calls-For-ETwTI
+- ChatGPT for README refactoring : https://chatgpt.com
