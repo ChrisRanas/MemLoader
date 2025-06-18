@@ -107,7 +107,9 @@ python Shellcode.py -u /path/to/udrl.bin -d /path/to/dll.dll -o /path/to/output.
 > [!Note]
 Not all UDRLs are stable with this project; some crash for reasons not yet investigated.
 Confirmed working combinations:
+> 
 > OdinLdr → dotnet-loader.dll
+> 
 > KaynStrike → pe-loader (payload-dependent) and dotnet-loader
 
 An reflective loader may be added in the future.
