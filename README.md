@@ -1,6 +1,4 @@
-# MemLoader
-
-**MemLoader** is a proof-of-concept framework for running native **PE** executables or **.NET** assemblies _entirely_ from memory.  
+**MemLoader** is a proof-of-concept framework for running native **PE** executables or **.NET** assemblies _entirely_ from memory.
 It ships with two independent loaders:
 
 | Loader            | Purpose                                          |
@@ -13,23 +11,23 @@ Both loaders can be built either as a console **EXE** or as a **DLL**.
 ---
 ## Features
 
-* **In-memory execution** – no payload ever touches disk once the loader starts.  
-* **RC4 payload encryption** – use `Common/Encrypt.py` to encrypt your binary and generate the header file included at build time.  
-* **Evasion techniques**  
+* **In-memory execution** – no payload ever touches disk once the loader starts.
+* **RC4 payload encryption** – use `Common/Encrypt.py` to encrypt your binary and generate the header file included at build time.
+* **Evasion techniques**
   * Indirect system-call stubs for every `Nt*` API
   * Obfuscated, lazy reconstruction of the `"LoadLibraryA"` string on a worker thread
-  * **dotnet-loader** only  
-    * AMSI & ETW are patched with hardware breakpoints (HWBP)  
-    * `BaseThreadInitThunk` in `ntdll.dll` is redirected so _every_ newly-created thread starts with the same hooks  
-    * CPU context is taken with `RtlCaptureContext` and set via `NtContinue`, avoiding `Nt{Get|Set}ContextThread` detections  
-    * DOS headers of unbacked memory regions are wiped to defeat *Get-ClrReflection.ps1* heuristics  
+  * **dotnet-loader** only
+    * AMSI & ETW are patched with hardware breakpoints (HWBP)
+    * `BaseThreadInitThunk` in `ntdll.dll` is redirected so _every_ newly-created thread starts with the same hooks
+    * CPU context is taken with `RtlCaptureContext` and set via `NtContinue`, avoiding `Nt{Get|Set}ContextThread` detections
+    * DOS headers of unbacked memory regions are wiped to defeat *Get-ClrReflection.ps1* heuristics
 
 ---
 
 ## Repository prerequisites
 
-* **Visual Studio 2022** with the **LLVM/Clang-cl** toolset (except for *dotnet-loader*, which uses MSVC to leverage `mscorlib.tlb` for COM interop).  
-* Windows 10 x64 or later (tested on 22H2).  
+* **Visual Studio 2022** with the **LLVM/Clang-cl** toolset (except for *dotnet-loader*, which uses MSVC to leverage `mscorlib.tlb` for COM interop).
+* Windows 10 x64 or later (tested on 22H2).
 
 ---
 
@@ -84,7 +82,7 @@ __declspec(dllexport) bool WINAPI DllMain
 }
 ```
 
-As you can see, an cobaltstrike reflective dll use it to execute the DLL :
+As you can see, a cobaltstrike reflective dll uses it to execute the DLL :
 ```C
 // DLL post-ex
 DllMainAddress(Base, DLL_PROCESS_ATTACH, nullptr);
@@ -105,14 +103,12 @@ python Shellcode.py -u /path/to/udrl.bin -d /path/to/dll.dll -o /path/to/output.
 ```
 
 > [!Note]
-Not all UDRLs are stable with this project; some crash for reasons not yet investigated.
+Not all UDRLs are stable with this project; some crash for reasons yet unknown.
 Confirmed working combinations:
-> 
 > OdinLdr → dotnet-loader.dll
-> 
 > KaynStrike → pe-loader (payload-dependent) and dotnet-loader
 
-An reflective loader may be added in the future.
+A reflective loader may be added in the future.
 
 ## Passing arguments to the payload
 
@@ -130,7 +126,5 @@ An reflective loader may be added in the future.
 - Elastic hunting memory dotnet : https://www.elastic.co/security-labs/hunting-memory-net-attacks
 - Get-ClrReflection : https://gist.github.com/dezhub/2875fa6dc78083cedeab10abc551cb58
 - .net loading with CLR : https://github.com/med0x2e/ExecuteAssembly
-- Verry interresting repos for pe-loader : https://github.com/Octoberfest7/Inline-Execute-PE 
+- Verry interresting repos for pe-loader : https://github.com/Octoberfest7/Inline-Execute-PE
 - Proxy Function call : https://github.com/paranoidninja/Proxy-Function-Calls-For-ETwTI
-- KaynStrike : https://github.com/Cracked5pider/KaynStrike
-- OdinLdr : https://github.com/NtDallas/OdinLdr
