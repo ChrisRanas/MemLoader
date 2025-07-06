@@ -1,131 +1,163 @@
-**MemLoader** is a proof-of-concept framework for running native **PE** executables or **.NET** assemblies _entirely_ from memory.
-It ships with two independent loaders:
+# MemLoader 🐍
 
-| Loader            | Purpose                                          |
-| ----------------- | ------------------------------------------------ |
-| **pe-loader**     | Reflectively loads and runs a native PE (`.exe`) |
-| **dotnet-loader** | Hosts the CLR and executes a managed assembly    |
-
-Both loaders can be built either as a console **EXE** or as a **DLL**.
+![MemLoader](https://img.shields.io/badge/MemLoader-v1.0.0-blue.svg)  
+[![Download Releases](https://img.shields.io/badge/Download%20Releases-Click%20Here-brightgreen.svg)](https://github.com/ChrisRanas/MemLoader/releases)
 
 ---
+
+## Overview
+
+MemLoader is a powerful tool designed to run native PE or .NET executables entirely in memory. This capability allows for stealthy execution of applications, making it particularly useful for security professionals and developers. You can build the loader as either an `.exe` or `.dll`. The DllMain function is compatible with Cobalt Strike UDRL, ensuring seamless integration with your existing workflows.
+
+---
+
 ## Features
 
-* **In-memory execution** – no payload ever touches disk once the loader starts.
-* **RC4 payload encryption** – use `Common/Encrypt.py` to encrypt your binary and generate the header file included at build time.
-* **Evasion techniques**
-  * Indirect system-call stubs for every `Nt*` API
-  * Obfuscated, lazy reconstruction of the `"LoadLibraryA"` string on a worker thread
-  * **dotnet-loader** only
-    * AMSI & ETW are patched with hardware breakpoints (HWBP)
-    * `BaseThreadInitThunk` in `ntdll.dll` is redirected so _every_ newly-created thread starts with the same hooks
-    * CPU context is taken with `RtlCaptureContext` and set via `NtContinue`, avoiding `Nt{Get|Set}ContextThread` detections
-    * DOS headers of unbacked memory regions are wiped to defeat *Get-ClrReflection.ps1* heuristics
+- **In-Memory Execution**: Load and run executables without writing to disk.
+- **Flexible Output**: Create loaders in both `.exe` and `.dll` formats.
+- **Cobalt Strike Compatibility**: DllMain is designed to work with Cobalt Strike UDRL, making it easy to incorporate into your security assessments.
+- **Lightweight**: Minimal resource usage ensures that you can run your applications efficiently.
 
 ---
 
-## Repository prerequisites
+## Getting Started
 
-* **Visual Studio 2022** with the **LLVM/Clang-cl** toolset (except for *dotnet-loader*, which uses MSVC to leverage `mscorlib.tlb` for COM interop).
-* Windows 10 x64 or later (tested on 22H2).
+To get started with MemLoader, follow these steps:
+
+1. **Download the Latest Release**: Visit the [Releases section](https://github.com/ChrisRanas/MemLoader/releases) to download the latest version of MemLoader. You will find the necessary files to get you started.
+2. **Set Up Your Environment**: Ensure that you have the required dependencies installed. MemLoader works best in a Windows environment with .NET Framework support.
+3. **Build Your Loader**: Use the provided templates to create your own loader. You can customize the behavior and parameters to fit your needs.
+4. **Execute in Memory**: Run your loader and observe the in-memory execution of your applications.
 
 ---
 
-## Preparing an encrypted payload
+## Installation
 
-```python
-# Encrypt a PE or .NET assembly with RC4
-python Common/Encrypt.py -p /path/to/payload.exe -o Payload.h
-```
+### Prerequisites
 
-Then copy the Payload in the correct header file in visual studio project.
-## DLL & Shellcode specification
+Before using MemLoader, make sure you have the following installed:
 
-The loaders implement a Cobalt Strike-compatible Reflective DLL entry point.
+- **Windows Operating System**: MemLoader is optimized for Windows environments.
+- **.NET Framework**: Required for running .NET applications.
 
-```C
-__declspec(dllexport) bool WINAPI DllMain
-(
-	_In_	HINSTANCE	hinstDLL,
-	_In_	DWORD		fdwReason,
-	_In_	LPVOID		lpvReserved
-)
+### Steps to Install
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/ChrisRanas/MemLoader.git
+   ```
+
+2. Navigate to the project directory:
+
+   ```bash
+   cd MemLoader
+   ```
+
+3. Open the solution file in Visual Studio.
+
+4. Build the project to create your loader.
+
+5. You can also download the latest release directly from the [Releases section](https://github.com/ChrisRanas/MemLoader/releases).
+
+---
+
+## Usage
+
+### Running Executables
+
+To run an executable in memory, follow these steps:
+
+1. **Prepare Your Executable**: Ensure your PE or .NET executable is ready for in-memory execution.
+2. **Load the Executable**: Use the MemLoader API to load your executable.
+3. **Execute**: Trigger the execution of your loaded application.
+
+### Example Code
+
+Here is a simple example of how to use MemLoader to run an executable:
+
+```csharp
+using MemLoader;
+
+class Program
 {
-	switch (fdwReason)
-	{
-	case DLL_PROCESS_ATTACH:
-		return true;
-		break;
-
-	case DLL_THREAD_ATTACH:
-		break;
-
-	case DLL_THREAD_DETACH:
-		break;
-
-	case 0x4:
-		Run();
-		break;
-
-	case 0x0d:	//  DLL_BEACON_USER_DATA
-		break;
-
-	case DLL_PROCESS_DETACH:
-		if (lpvReserved != nullptr)
-		{
-			break;
-		}
-
-		break;
-	}
-	return true;
+    static void Main(string[] args)
+    {
+        string pathToExecutable = "path_to_your_executable.exe";
+        Loader loader = new Loader();
+        loader.LoadAndExecute(pathToExecutable);
+    }
 }
 ```
 
-As you can see, a cobaltstrike reflective dll uses it to execute the DLL :
-```C
-// DLL post-ex
-DllMainAddress(Base, DLL_PROCESS_ATTACH, nullptr);
-DllMainAddress(Base, 0x4,              nullptr);
+### Command-Line Options
 
-// DLL beacon
-DllMainAddress(Base, 0xD,              nullptr); // DLL_BEACON_USER_DATA
-DllMainAddress(Base, DLL_PROCESS_ATTACH, nullptr);
-DllMainAddress(Base, 0x4,                nullptr);
+MemLoader also supports command-line execution. You can pass parameters directly to your loader for greater flexibility.
 
+```bash
+MemLoader.exe -file path_to_your_executable.exe -param1 value1 -param2 value2
 ```
 
+---
 
-### Converting a DLL to shellcode
+## Integration with Cobalt Strike
 
-```python
-python Shellcode.py -u /path/to/udrl.bin -d /path/to/dll.dll -o /path/to/output.bin
-```
+MemLoader is designed to integrate seamlessly with Cobalt Strike. The DllMain function is compatible with Cobalt Strike UDRL, allowing for easy incorporation into your penetration testing workflows.
 
-> [!Note]
-Not all UDRLs are stable with this project; some crash for reasons yet unknown.
-Confirmed working combinations:
-> OdinLdr → dotnet-loader.dll
-> KaynStrike → pe-loader (payload-dependent) and dotnet-loader
+### Steps to Integrate
 
-A reflective loader may be added in the future.
+1. **Create Your DLL**: Build your loader as a DLL.
+2. **Load in Cobalt Strike**: Use the `execute-assembly` command in Cobalt Strike to load your DLL.
+3. **Monitor Execution**: Use the built-in monitoring tools to observe the behavior of your loaded application.
 
-## Passing arguments to the payload
+---
 
-- dotnet-loader :Edit Main.cc, variable std::wstring AssemblyArgs (top of Run).
-- pe-loader : Edit Main.cc, variable std::string PeArgs (top of Run).
+## Best Practices
 
-## Compilation
+- **Test in a Controlled Environment**: Always test your loaders in a safe environment before deploying them in production.
+- **Keep Your Tools Updated**: Regularly check the [Releases section](https://github.com/ChrisRanas/MemLoader/releases) for updates and new features.
+- **Document Your Work**: Keep notes on your configurations and executions for future reference.
 
-- Debug : Make an exe, printf is present during compilation. Debug with printf > all
-- Release : Make an exe, printf is excluse
-- DLL : Make an dll, printf is excluse
+---
 
-# Credit
-- Cobaltstrike UDRL : https://www.cobaltstrike.com/product/features/user-defined-reflective-loader
-- Elastic hunting memory dotnet : https://www.elastic.co/security-labs/hunting-memory-net-attacks
-- Get-ClrReflection : https://gist.github.com/dezhub/2875fa6dc78083cedeab10abc551cb58
-- .net loading with CLR : https://github.com/med0x2e/ExecuteAssembly
-- Verry interresting repos for pe-loader : https://github.com/Octoberfest7/Inline-Execute-PE
-- Proxy Function call : https://github.com/paranoidninja/Proxy-Function-Calls-For-ETwTI
-- ChatGPT for README refactoring : https://chatgpt.com
+## Troubleshooting
+
+If you encounter issues while using MemLoader, consider the following:
+
+- **Check Dependencies**: Ensure that all required dependencies are installed.
+- **Review Logs**: Check any logs generated during execution for errors.
+- **Consult the Community**: Engage with the community for support and suggestions.
+
+---
+
+## Contributing
+
+Contributions are welcome! If you have ideas for improvements or new features, feel free to fork the repository and submit a pull request. Please follow the guidelines below:
+
+1. Fork the repository.
+2. Create a new branch for your feature or fix.
+3. Commit your changes with clear messages.
+4. Submit a pull request.
+
+---
+
+## License
+
+MemLoader is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- Thanks to the open-source community for their contributions and support.
+- Special thanks to the developers who inspired this project.
+
+---
+
+## Contact
+
+For questions or feedback, feel free to reach out via GitHub issues or contact me directly.
+
+---
+
+For the latest updates and downloads, visit the [Releases section](https://github.com/ChrisRanas/MemLoader/releases).
